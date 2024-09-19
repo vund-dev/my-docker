@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7.2.5
+    restart: always
+    container_name: my-redis
+    command: >
+      --user ${REDIS_USERNAME} on >${REDIS_PASSWORD}
+      --user default off
+    ports:
+      - "${REDIS_PORT}:6379"
+  mysql:
+    image: mysql:8.0
+    cap_add:
+      - SYS_NICE
+    container_name: db-mysql
+    restart: always
+    ports:
+      - '${MYSQL_PORT}:3306'
+    volumes:
+      - db:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+  my-mongodb:
+    image: mongo:4.2.3-bionic
+    restart: always
+    container_name: my-mongodb
+    ports:
+      - ${MONGO_PORT}:27017
+  service-docker:
+    build: ./root
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+    mem_reservation: 8G
+    container_name: service-docker
+    tty: true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "laravel-api.local:127.0.0.1"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - ./root/php8.3-fpm/php-ini-overrides.ini:/etc/php/8.3/cli/conf.d/php-ini-overrides.ini
+      - ./root/php8.3-fpm/php-ini-overrides.ini:/etc/php/8.3/fpm/conf.d/php-ini-overrides.ini
+      - ./root/php8.3-fpm/php-fpm.d:/etc/php/8.3/fpm/pool.d
+      - ./root/nginx:/etc/nginx/sites-enabled
+      - ./root/logs:/var/log/
+      - ./../:/var/www/services
+volumes:
+  db:
+    driver: local
